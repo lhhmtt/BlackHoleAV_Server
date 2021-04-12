@@ -1,0 +1,11 @@
+
+#Byte-compiled
+__pycache__/
+*.py[cod]
+*.pyc
+
+#Mac
+.DS_Store
+
+#Env
+venv/
