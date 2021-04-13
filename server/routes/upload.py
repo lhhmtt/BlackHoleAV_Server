@@ -38,18 +38,22 @@ def upload_file():
               conn = sqlite3.connect('./database/db.sqlite')
               cur = conn.cursor()
               cur.execute('''CREATE TABLE IF NOT EXISTS File (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, md5 TEXT, status TEXT)''')
-              cur.execute('SELECT name FROM File WHERE name = ? ', (filename,))
+              cur.execute('SELECT status FROM File WHERE md5 = ? ', (info['meta']['file_info']['md5'],))
               row = cur.fetchone()
-              if (info['data']['attributes']['stats']['malicious'] == 0):
-                if row is None:
-                  cur.execute('''INSERT INTO File (name, md5, status) VALUES (?,?,?)''', (filename, info['meta']['file_info']['md5'], 'clean'))
-                conn.commit()
-                return jsonify( status = "clean" )
+              if(row is not None):
+                if (' '.join(row) == "clean"):
+                  return jsonify( status = "clean" )
+                if (' '.join(row) == "malware"):
+                  return jsonify( status = "malware" )
               else:
-                if row is None:
+                if (info['data']['attributes']['stats']['malicious'] == 0):
+                  cur.execute('''INSERT INTO File (name, md5, status) VALUES (?,?,?)''', (filename, info['meta']['file_info']['md5'], 'clean'))
+                  conn.commit()
+                  return jsonify( status = "clean" )
+                else:
                   cur.execute('''INSERT INTO File (name, md5, status) VALUES (?,?,?)''', (filename, info['meta']['file_info']['md5'], 'malware'))
-                conn.commit()
-                return jsonify( status = "malware" )
+                  conn.commit()
+                  return jsonify( status = "malware" )
         else:
           return jsonify( status = "unknown", description = "Only APK are allowed" )
 
