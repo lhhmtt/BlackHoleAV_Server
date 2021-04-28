@@ -45,7 +45,10 @@ def upload_file():
           cur.execute('''CREATE TABLE IF NOT EXISTS File (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, md5 TEXT, status TEXT)''')
           cur.execute('SELECT status FROM File WHERE md5 = ? ', (md5,))
           row = cur.fetchone()
+          print("-----Begin_Signature_analysis-----")
+          print("Searching in database...")
           if(row is not None):
+            print("Found!!!")
             if (' '.join(row) == "clean"):
               print(f"{base_name} is signature_clean ")   
               return jsonify( status = "clean" )
@@ -53,6 +56,8 @@ def upload_file():
               print(f"{base_name} is signature_malware ")   
               return jsonify( status = "malware" )
           else:
+            print("Not Found")
+            print("Begin analysis with virustotal..")
             vt = Virustotal()
             response = []
             if(file_size < 30):
@@ -62,9 +67,12 @@ def upload_file():
               if(url_upload['data'] != ''):
                 response = vt.big_file_upload(files, url_upload['data'])
             if(response["data"]["id"]):
-              info = vt.get_analysis_info(response["data"]["id"])
-              if (info['data']['attributes']['stats']['malicious'] == 0):               
-                if(runtime_script.returnDecision() == "malware"):
+              info = vt.get_analysis_info(response["data"]["id"])           
+              if (info['data']['attributes']['stats']['malicious'] == 0):
+                print("Virustotal result clean")
+                print("-----Begin_Behavior_analysis-----")   
+                result = runtime_script.returnDecision(base_name)         
+                if(result == "malware"):
                     cur.execute('''INSERT INTO File (name, md5, status) VALUES (?,?,?)''', (filename, info['meta']['file_info']['md5'], 'malware'))
                     conn.commit()
                     print(f"{base_name} is behavior_malware ")

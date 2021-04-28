@@ -6,7 +6,7 @@ import json
 import array as arr
 
 
-def convert(file):
+def convert():
     path = "C:/Users/BlackHoleAV/Desktop/response_json"
     # x=os.listdir(os.path.expanduser(path))
     # print(x)
@@ -39,9 +39,9 @@ def convert(file):
     for i in List_csv_input:
         i = str(i)
         if re.search(i, data_json_string):
-            List_csv_output.append('1')
+            List_csv_output.append(1)
         else:
-            List_csv_output.append('0')
+            List_csv_output.append(0)
 
     writer.writerow(List_csv_output)
 

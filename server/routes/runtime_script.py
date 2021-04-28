@@ -1,18 +1,11 @@
 import time
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
-import os
 import json
 import requests
-from threading import Thread
-from queue import Queue
 from colorama import Fore
 import sys
-
 sys.path.append('C:/Users/BlackHoleAV/BlackHoleAV_Server/server/routes')
 import tool_convert
 import malware_data_analysis
-from pathlib import Path
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 
 SERVER = "http://127.0.0.1:8000"
@@ -24,10 +17,11 @@ root = "C:/Users/BlackHoleAV/BlackHoleAV_Server/uploads/"
 
 
 # upload dùng api của mob
+
+
 def upload(file1):
     """Upload File"""
-    print(Fore.YELLOW + "Uploading file")
-    print(file1)
+    print(f"Uploading file {file1}")
     multipart_data = MultipartEncoder(
         fields={'file': (root + file1, open(root + file1, 'rb'), 'application/octet-stream')})
     headers = {'Content-Type': multipart_data.content_type, 'Authorization': APIKEY}
@@ -36,87 +30,45 @@ def upload(file1):
 
 
 # scan dùng api mob
-def scan(data):
+def scan(data,name):
     """Scan the file"""
-    print("Scanning file")
+    print(f"Scanning file {name}")
     post_dict = json.loads(data)
     headers = {'Authorization': APIKEY}
     requests.post(SERVER + '/api/v1/scan', data=post_dict, headers=headers)
 
 
 # gen ra json
-def json_resp(data):
-    """Generate JSON Report"""
-    print("Generate JSON report")
+def json_resp(data,name):
+    print(f"Generate JSON report {name}")
     headers = {'Authorization': APIKEY}
+    print(data)
     data = {"hash": json.loads(data)["hash"]}
     response = requests.post(SERVER + '/api/v1/report_json', data=data, headers=headers)
     return response.json()
 
-def delete(data):
+
+def delete(data,name):
     """Delete Scan Result"""
-    print("Deleting Scan")
+    print(f"Deleting Scan {name}")
     headers = {'Authorization': APIKEY}
     data = {"hash": json.loads(data)["hash"]}
     requests.post(SERVER + '/api/v1/delete_scan', data=data, headers=headers)
-    print("delete done")
-
-def returnDecision():
-    decision = malware_data_analysis.RandomForest_250()
-    return decision
+    print("Delete done")
 
 
-class Watcher:
-    DIRECTORY_TO_WATCH = root
-
-    def __init__(self):
-        self.observer = Observer()
-
-    def run(self):
-        event_handler = Handler()
-        self.observer.schedule(event_handler, self.DIRECTORY_TO_WATCH, recursive=True)
-        self.observer.start()
-        try:
-            while True:
-                print("Watcher is running!!!!")
-                time.sleep(5)
-        except:
-            self.observer.stop()
-            print("Error")
-
-        self.observer.join()
-        print(event_handler)
-
-class Handler(FileSystemEventHandler):
-
-    @staticmethod
-    def on_any_event(event):
-        if event.is_directory:
-            return None
-
-        elif event.event_type == 'created':
-            file = os.path.basename(event.src_path)
-            a = Path(file).stem
-            time.sleep(1)
-            uploaded = upload(file)
-            scan(uploaded)
-            json1 = json_resp(uploaded)
-            with open("C:/Users/BlackHoleAV/Desktop/response_json/" + a + ".json", 'w') as outfile:
-                # tải json từ mob về và ném vào vào folder của mình
-                json.dump(json1, outfile)
-            print("Generate json : done")
-            tool_convert.convert(event.src_path)
-            print(returnDecision())
-            delete(uploaded)
-            print("done")
-            return 1
-            # Take any action here when a file is first created.
-            #print "Received created event - %s." % event.src_path
+def returnDecision(base_name):
+    time.sleep(1)
+    uploaded = upload(base_name)
+    scan(uploaded,base_name)
+    json1 = json_resp(uploaded,base_name)
+    with open("C:/Users/BlackHoleAV/Desktop/response_json/" + base_name + ".json", 'w') as outfile:
+        json.dump(json1, outfile)
+    print("Generate json : done")
+    tool_convert.convert()
+    delete(uploaded,base_name)
+    result = malware_data_analysis.RandomForest_250()
+    print("Final done")
+    return result
 
 
-
-
-
-if __name__ == '__main__':
-    w = Watcher()
-    w.run()
